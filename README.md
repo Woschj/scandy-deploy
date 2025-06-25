@@ -80,6 +80,31 @@ Stellen Sie sicher, dass Docker läuft:
 docker info
 ```
 
+## 🔒 Sicherheitsverbesserungen
+
+Die Installation wurde mit folgenden Sicherheitsmaßnahmen erweitert:
+
+### ✅ Port-Konflikt-Prüfung
+- Automatische Prüfung auf bereits belegte Ports
+- Benutzer wird aufgefordert, alternative Ports zu wählen
+- Verhindert Konflikte mit bestehenden Services
+
+### ✅ Container-Konflikt-Prüfung
+- Prüfung auf bereits existierende Container mit gleichen Namen
+- Option zum sicheren Löschen bestehender Container
+- Verhindert unbeabsichtigte Überschreibungen
+
+### ✅ Dynamische Port-Konfiguration
+- Benutzer kann alle Ports individuell anpassen
+- Konfiguration wird in `.env`-Datei gespeichert
+- Verwaltungsskripte verwenden korrekte Ports
+
+### ⚠️ Empfohlene Sicherheitsmaßnahmen
+- Ändern Sie die Standard-Passwörter nach der Installation
+- Verwenden Sie HTTPS in Produktionsumgebungen
+- Regelmäßige Backups mit `./backup.sh`
+- Überwachen Sie die Container-Logs
+
 ## 📞 Support
 
 Bei Problemen:

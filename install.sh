@@ -39,29 +39,84 @@ fi
 
 echo -e "${GREEN}✓ Docker ist installiert und läuft${NC}"
 
+# Prüfe auf bestehende Container
+check_existing_containers() {
+    local container_name=$1
+    
+    if docker ps -a --format "table {{.Names}}" | grep -q "^${container_name}$"; then
+        echo -e "${YELLOW}Container '$container_name' existiert bereits!${NC}"
+        read -p "Möchten Sie den bestehenden Container löschen? (j/n): " delete_confirm
+        if [[ "$delete_confirm" =~ ^[Jj]$ ]]; then
+            echo -e "${YELLOW}Lösche bestehenden Container...${NC}"
+            docker rm -f "$container_name" 2>/dev/null || true
+        else
+            echo -e "${RED}Installation abgebrochen. Bitte wählen Sie einen anderen Container-Namen.${NC}"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Funktion zur Port-Verfügbarkeitsprüfung
+check_port_availability() {
+    local port=$1
+    local service_name=$2
+    
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo -e "${RED}Port $port ist bereits belegt!${NC}"
+        echo -e "${YELLOW}Bitte wählen Sie einen anderen Port für $service_name.${NC}"
+        return 1
+    fi
+    return 0
+}
+
 # Container-Name Abfrage
-read -p "Bitte geben Sie einen Namen für die Umgebung ein (Standard: scandy): " CONTAINER_NAME
-if [ -z "$CONTAINER_NAME" ]; then
-    CONTAINER_NAME="scandy"
-fi
+while true; do
+    read -p "Bitte geben Sie einen Namen für die Umgebung ein (Standard: scandy): " CONTAINER_NAME
+    if [ -z "$CONTAINER_NAME" ]; then
+        CONTAINER_NAME="scandy"
+    fi
+    
+    if check_existing_containers "scandy-mongodb" && check_existing_containers "scandy-mongo-express" && check_existing_containers "scandy-app"; then
+        break
+    fi
+done
 
-# App-Port Abfrage
-read -p "Bitte geben Sie den Port für die App ein (Standard: 5000): " APP_PORT
-if [ -z "$APP_PORT" ]; then
-    APP_PORT="5000"
-fi
+# App-Port Abfrage mit Verfügbarkeitsprüfung
+while true; do
+    read -p "Bitte geben Sie den Port für die App ein (Standard: 5000): " APP_PORT
+    if [ -z "$APP_PORT" ]; then
+        APP_PORT="5000"
+    fi
+    
+    if check_port_availability $APP_PORT "App"; then
+        break
+    fi
+done
 
-# MongoDB-Port Abfrage
-read -p "Bitte geben Sie den Port für MongoDB ein (Standard: 27017): " MONGO_PORT
-if [ -z "$MONGO_PORT" ]; then
-    MONGO_PORT="27017"
-fi
+# MongoDB-Port Abfrage mit Verfügbarkeitsprüfung
+while true; do
+    read -p "Bitte geben Sie den Port für MongoDB ein (Standard: 27017): " MONGO_PORT
+    if [ -z "$MONGO_PORT" ]; then
+        MONGO_PORT="27017"
+    fi
+    
+    if check_port_availability $MONGO_PORT "MongoDB"; then
+        break
+    fi
+done
 
-# Mongo Express Port Abfrage
-read -p "Bitte geben Sie den Port für Mongo Express (Web-UI) ein (Standard: 8081): " MONGO_EXPRESS_PORT
-if [ -z "$MONGO_EXPRESS_PORT" ]; then
-    MONGO_EXPRESS_PORT="8081"
-fi
+# Mongo Express Port Abfrage mit Verfügbarkeitsprüfung
+while true; do
+    read -p "Bitte geben Sie den Port für Mongo Express (Web-UI) ein (Standard: 8081): " MONGO_EXPRESS_PORT
+    if [ -z "$MONGO_EXPRESS_PORT" ]; then
+        MONGO_EXPRESS_PORT="8081"
+    fi
+    
+    if check_port_availability $MONGO_EXPRESS_PORT "Mongo Express"; then
+        break
+    fi
+done
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}   Konfiguration:${NC}"
@@ -87,7 +142,7 @@ echo -e "${GREEN}Erstelle Projektverzeichnis: $PROJECT_DIR${NC}"
 
 # Erstelle docker-compose.yml
 echo -e "${GREEN}Erstelle docker-compose.yml...${NC}"
-cat > docker-compose.yml << 'EOF'
+cat > docker-compose.yml << EOF
 version: '3.8'
 
 services:
@@ -100,7 +155,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: scandy123
       MONGO_INITDB_DATABASE: scandy
     ports:
-      - "27017:27017"
+      - "$MONGO_PORT:27017"
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init:/docker-entrypoint-initdb.d
@@ -125,7 +180,7 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: scandy123
     ports:
-      - "8081:8081"
+      - "$MONGO_EXPRESS_PORT:8081"
     depends_on:
       scandy-mongodb:
         condition: service_healthy
@@ -148,7 +203,7 @@ services:
       - CONSUMABLE_SYSTEM_NAME=Verbrauchsgüter
       - TZ=Europe/Berlin
     ports:
-      - "5000:5000"
+      - "$APP_PORT:5000"
     volumes:
       - app_uploads:/app/app/uploads
       - app_backups:/app/app/backups
@@ -233,8 +288,16 @@ EOF
 # Erstelle Verwaltungsskripte
 echo -e "${GREEN}Erstelle Verwaltungsskripte...${NC}"
 
+# Erstelle Konfigurationsdatei für Ports
+cat > .env << EOF
+APP_PORT=$APP_PORT
+MONGO_PORT=$MONGO_PORT
+MONGO_EXPRESS_PORT=$MONGO_EXPRESS_PORT
+CONTAINER_NAME=$CONTAINER_NAME
+EOF
+
 # Start-Skript
-cat > start.sh << 'EOF'
+cat > start.sh << EOF
 #!/bin/bash
 echo "Starte Scandy Docker-Container..."
 docker-compose up -d
@@ -248,9 +311,9 @@ docker-compose ps
 echo ""
 echo "=========================================="
 echo "Scandy ist verfügbar unter:"
-echo "App: http://localhost:5000"
-echo "Mongo Express: http://localhost:8081"
-echo "MongoDB: localhost:27017"
+echo "App: http://localhost:$APP_PORT"
+echo "Mongo Express: http://localhost:$MONGO_EXPRESS_PORT"
+echo "MongoDB: localhost:$MONGO_PORT"
 echo "=========================================="
 EOF
 
@@ -313,10 +376,10 @@ docker-compose up -d
 
 echo "========================================"
 echo -e "${GREEN}Installation abgeschlossen!${NC}"
-echo "Die Anwendung ist unter http://localhost:5000 erreichbar"
-echo "Container-Name: scandy"
-echo "MongoDB Port: 27017"
-echo "Mongo Express Port: 8081"
+echo "Die Anwendung ist unter http://localhost:$APP_PORT erreichbar"
+echo "Container-Name: $CONTAINER_NAME"
+echo "MongoDB Port: $MONGO_PORT"
+echo "Mongo Express Port: $MONGO_EXPRESS_PORT"
 echo "========================================"
 echo ""
 echo -e "${YELLOW}Verwaltung:${NC}"
