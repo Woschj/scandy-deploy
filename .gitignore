@@ -1,0 +1,107 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Datenbanken
+*.db
+*.sqlite
+*.sqlite3
+app/database/
+backups/
+
+# Scandy Datenverzeichnisse
+scandy_data/
+scandy_project/scandy_data/
+DATA_DIR/
+REPO_DIR/
+
+# Logs
+*.log
+logs/
+
+# Uploads
+app/uploads/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporäre Dateien
+*.tmp
+*.bak
+*.swp
+*~
+
+# Flask Session
+app/flask_session/*
+!app/flask_session/.gitkeep
+instance/flask_session/*
+!instance/flask_session/.gitkeep
+
+# Build artifacts / Temporary files
+*.spec
+dist/
+*.egg-info/
+/htmlcov/
+.pytest_cache/
+.coverage
+
+# Unused files directory
+_potentially_unused/
+
+# Archivdateien
+*.tar.gz
+scandy.tar.gz
+scandy_docker.tar.gz
+
+# Node.js / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker volumes
+*_project/
+
+# Build artifacts
+*.css.map
+*.js.map 
